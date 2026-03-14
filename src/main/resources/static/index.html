@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem CRUD KTP</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .card-header {
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+        }
+        .table th {
+            background-color: #343a40;
+            color: white;
+            font-weight: 500;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #e8f4fd;
+            cursor: pointer;
+        }
+        .btn-action {
+            padding: 4px 10px;
+            font-size: 0.82rem;
+        }
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 280px;
+        }
+        .toast {
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .form-label {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+        }
+        .spinner-box {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        #noData {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <span class="navbar-brand">
+            <i class="bi bi-card-text me-2"></i>Sistem CRUD Data KTP
+        </span>
+        <span class="text-light small">Spring Boot + MySQL + jQuery Ajax</span>
+    </div>
+</nav>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+    <div class="spinner-box">
+        <div class="spinner-border text-primary mb-2"></div>
+        <div>Memproses...</div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<div class="container mb-5">
+    <div class="row g-4">
+
+        <!-- FORM CARD -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    <span id="formTitle">Tambah Data KTP</span>
+                </div>
+                <div class="card-body">
+                    <form id="ktpForm" novalidate>
+                        <input type="hidden" id="editId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Nomor KTP <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nomorKtp"
+                                   placeholder="16 digit angka" maxlength="16">
+                            <div class="invalid-feedback" id="err-nomorKtp"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="namaLengkap"
+                                   placeholder="Nama sesuai KTP">
+                            <div class="invalid-feedback" id="err-namaLengkap"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Alamat <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="alamat" rows="3"
+                                      placeholder="Alamat lengkap"></textarea>
+                            <div class="invalid-feedback" id="err-alamat"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="tanggalLahir">
+                            <div class="invalid-feedback" id="err-tanggalLahir"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Jenis Kelamin <span class="text-danger">*</span></label>
+                            <select class="form-select" id="jenisKelamin">
+                                <option value="">-- Pilih Jenis Kelamin --</option>
+                                <option value="Laki-laki">Laki-laki</option>
+                                <option value="Perempuan">Perempuan</option>
+                            </select>
+                            <div class="invalid-feedback" id="err-jenisKelamin"></div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="btnSubmit">
+                                <i class="bi bi-save me-1"></i>Simpan
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="resetForm()">
+                                <i class="bi bi-x-circle me-1"></i>Batal / Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLE CARD -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-table me-2"></i>Data KTP Terdaftar</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="loadData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered mb-0">
+                            <thead>
+                            <tr>
+                                <th style="width:50px">#</th>
+                                <th>Nomor KTP</th>
+                                <th>Nama Lengkap</th>
+                                <th>Alamat</th>
+                                <th>Tgl Lahir</th>
+                                <th>Kelamin</th>
+                                <th style="width:120px">Aksi</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noData">
+                        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                        <p>Belum ada data KTP terdaftar</p>
+                    </div>
+                </div>
+                <div class="card-footer text-muted small">
+                    Total data: <strong id="totalData">0</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Konfirmasi Hapus -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h6 class="modal-title"><i class="bi bi-trash me-2"></i>Konfirmasi Hapus</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-1">Yakin ingin menghapus data:</p>
+                <strong id="deleteNama" class="text-danger"></strong>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger btn-sm" id="btnConfirmDelete">
+                    <i class="bi bi-trash me-1"></i>Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const BASE_URL = 'http://localhost:8080/ktp';
+    let deleteId = null;
+
+    function showToast(message, type = 'success') {
+        const icons = {
+            success: 'bi-check-circle-fill',
+            danger:  'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info:    'bi-info-circle-fill'
+        };
+        const id = 'toast-' + Date.now();
+        const html = `
+            <div id="${id}" class="toast align-items-center text-bg-${type} border-0 mb-2 show" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi ${icons[type] || icons.info} me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                            onclick="$('#${id}').remove()"></button>
+                </div>
+            </div>`;
+        $('#toast-container').append(html);
+        setTimeout(() => $(`#${id}`).fadeOut(400, function(){ $(this).remove(); }), 3500);
+    }
+
+    function showLoading() { $('#loadingOverlay').css('display','flex'); }
+    function hideLoading() { $('#loadingOverlay').hide(); }
+
+    function clearErrors() {
+        $('.form-control, .form-select').removeClass('is-invalid is-valid');
+        $('.invalid-feedback').text('');
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const [y, m, d] = dateStr.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    function loadData() {
+        showLoading();
+        $.ajax({
+            url: BASE_URL,
+            method: 'GET',
+            contentType: 'application/json',
+            success: function(response) {
+                hideLoading();
+                if (response.success) {
+                    renderTable(response.data);
+                } else {
+                    showToast(response.message, 'warning');
+                }
+            },
+            error: function() {
+                hideLoading();
+                showToast('Gagal memuat data. Pastikan server berjalan.', 'danger');
+            }
+        });
+    }
+
+    function renderTable(data) {
+        const tbody = $('#tableBody');
+        tbody.empty();
+        $('#totalData').text(data.length);
+
+        if (!data || data.length === 0) {
+            $('#noData').show();
+            return;
+        }
+
+        $('#noData').hide();
+        $.each(data, function(i, ktp) {
+            const row = `
+                <tr>
+                    <td class="text-center">${i + 1}</td>
+                    <td><code>${ktp.nomorKtp}</code></td>
+                    <td>${ktp.namaLengkap}</td>
+                    <td><small>${ktp.alamat}</small></td>
+                    <td>${formatDate(ktp.tanggalLahir)}</td>
+                    <td>
+                        <span class="badge ${ktp.jenisKelamin === 'Laki-laki' ? 'bg-info' : 'bg-danger'}">
+                            ${ktp.jenisKelamin === 'Laki-laki' ? '♂' : '♀'} ${ktp.jenisKelamin}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-warning btn-action me-1"
+                                onclick="loadEdit(${ktp.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-danger btn-action"
+                                onclick="confirmDelete(${ktp.id}, '${ktp.namaLengkap}')"
+                                title="Hapus">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            tbody.append(row);
+        });
+    }
+
+    $('#ktpForm').on('submit', function(e) {
+        e.preventDefault();
+        clearErrors();
+
+        const id = $('#editId').val();
+        const isEdit = id !== '';
+
+        const payload = {
+            nomorKtp:     $('#nomorKtp').val().trim(),
+            namaLengkap:  $('#namaLengkap').val().trim(),
+            alamat:       $('#alamat').val().trim(),
+            tanggalLahir: $('#tanggalLahir').val(),
+            jenisKelamin: $('#jenisKelamin').val()
+        };
+
+        let valid = true;
+        if (!payload.nomorKtp || !/^\d{16}$/.test(payload.nomorKtp)) {
+            $('#nomorKtp').addClass('is-invalid');
+            $('#err-nomorKtp').text('Nomor KTP harus 16 digit angka');
+            valid = false;
+        }
+        if (!payload.namaLengkap) {
+            $('#namaLengkap').addClass('is-invalid');
+            $('#err-namaLengkap').text('Nama lengkap tidak boleh kosong');
+            valid = false;
+        }
+        if (!payload.alamat) {
+            $('#alamat').addClass('is-invalid');
+            $('#err-alamat').text('Alamat tidak boleh kosong');
+            valid = false;
+        }
+        if (!payload.tanggalLahir) {
+            $('#tanggalLahir').addClass('is-invalid');
+            $('#err-tanggalLahir').text('Tanggal lahir tidak boleh kosong');
+            valid = false;
+        }
+        if (!payload.jenisKelamin) {
+            $('#jenisKelamin').addClass('is-invalid');
+            $('#err-jenisKelamin').text('Jenis kelamin harus dipilih');
+            valid = false;
+        }
+        if (!valid) return;
+
+        showLoading();
+
+        const url    = isEdit ? `${BASE_URL}/${id}` : BASE_URL;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        $.ajax({
+            url: url,
+            method: method,
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function(response) {
+                hideLoading();
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    resetForm();
+                    loadData();
+                } else {
+                    showToast(response.message, 'danger');
+                }
+            },
+            error: function(xhr) {
+                hideLoading();
+                let msg = 'Terjadi kesalahan';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.data && typeof xhr.responseJSON.data === 'object') {
+                        const errs = xhr.responseJSON.data;
+                        Object.keys(errs).forEach(field => {
+                            $(`#${field}`).addClass('is-invalid');
+                            $(`#err-${field}`).text(errs[field]);
+                        });
+                        msg = 'Mohon perbaiki kesalahan pada form';
+                    } else {
+                        msg = xhr.responseJSON.message || msg;
+                    }
+                }
+                showToast(msg, 'danger');
+            }
+        });
+    });
+
+    function loadEdit(id) {
+        showLoading();
+        $.ajax({
+            url: `${BASE_URL}/${id}`,
+            method: 'GET',
+            contentType: 'application/json',
+            success: function(response) {
+                hideLoading();
+                if (response.success) {
+                    const ktp = response.data;
+                    clearErrors();
+                    $('#editId').val(ktp.id);
+                    $('#nomorKtp').val(ktp.nomorKtp);
+                    $('#namaLengkap').val(ktp.namaLengkap);
+                    $('#alamat').val(ktp.alamat);
+                    $('#tanggalLahir').val(ktp.tanggalLahir);
+                    $('#jenisKelamin').val(ktp.jenisKelamin);
+                    $('#formTitle').text('Edit Data KTP (ID: ' + ktp.id + ')');
+                    $('#btnSubmit').html('<i class="bi bi-arrow-repeat me-1"></i>Update');
+                    $('#btnSubmit').removeClass('btn-primary').addClass('btn-warning');
+                    $('html, body').animate({ scrollTop: 0 }, 400);
+                }
+            },
+            error: function() {
+                hideLoading();
+                showToast('Gagal memuat data untuk diedit', 'danger');
+            }
+        });
+    }
+
+    function confirmDelete(id, nama) {
+        deleteId = id;
+        $('#deleteNama').text(nama);
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    $('#btnConfirmDelete').on('click', function() {
+        if (!deleteId) return;
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        showLoading();
+
+        $.ajax({
+            url: `${BASE_URL}/${deleteId}`,
+            method: 'DELETE',
+            success: function(response) {
+                hideLoading();
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    loadData();
+                } else {
+                    showToast(response.message, 'danger');
+                }
+                deleteId = null;
+            },
+            error: function(xhr) {
+                hideLoading();
+                const msg = xhr.responseJSON ? xhr.responseJSON.message : 'Gagal menghapus data';
+                showToast(msg, 'danger');
+                deleteId = null;
+            }
+        });
+    });
+
+    function resetForm() {
+        $('#ktpForm')[0].reset();
+        $('#editId').val('');
+        clearErrors();
+        $('#formTitle').text('Tambah Data KTP');
+        $('#btnSubmit').html('<i class="bi bi-save me-1"></i>Simpan');
+        $('#btnSubmit').removeClass('btn-warning').addClass('btn-primary');
+    }
+
+    $(document).ready(function() {
+        loadData();
+    });
+</script>
+</body>
+</html>
